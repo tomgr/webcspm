@@ -1,0 +1,1 @@
+&copy; <a href="https://www.cs.ox.ac.uk/people/thomas.gibson-robinson/">Thomas Gibson-Robinson</a>, 2012. Makes use of <a href="https://github.com/tomgr/libcspm">libcspm</a> and the <a href="http://www.snapframework.com/">Snap Framework</a>.
