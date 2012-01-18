@@ -68,9 +68,8 @@ libcspmTypeCheck input = do
 
 highlight :: String -> IO String
 highlight input =
-    readProcess "bundle" 
-        ["exec", "ruby", "dependencies/textmate2css/highlight.rb", 
-        "-s", "dependencies/cspm-textmate/CSPM.tmLanguage"] input
+    readProcess "./dependencies/textmate2css/highlight.rb" 
+        ["-s", "dependencies/cspm-textmate/CSPM.tmLanguage"] input
 
 mkElem :: String -> [(String, String)] -> [X.Node] -> X.Node
 mkElem e attrs children =
