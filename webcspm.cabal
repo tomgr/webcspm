@@ -14,7 +14,7 @@ Executable webcspm
     Main-is: Main.hs
 
     Build-depends:
-        libcspm >= 0.2 && < 0.3,
+        libcspm >= 0.2.1 && < 0.3,
         process >= 1.1 && < 1.2,
         -- Snap Dependenicies
         base >= 4 && < 5,

@@ -26,7 +26,22 @@ import Util.Annotated
 import Util.Exception
 
 index :: Handler App App ()
-index = heistLocal (bindSplices [("plainsource", plainSourceCode "")]) $ render "index"
+index =
+    let
+        getter = heistLocal (bindSplices [("plainsource", plainSourceCode "")]) 
+            $ render "index"
+        setter = do
+            sourcebs <- decodedParam "sourceCode"
+            let source = BC.toString sourcebs
+            r <- liftIO $ libcspmTypeCheck source
+            src <- liftIO $ highlight source
+            heistLocal (bindSplices [
+                ("result", resultSplice r),
+                ("sourcecode", sourceCodeSplice src),
+                ("plainsource", plainSourceCode source)]) $ render "type_check_result"
+          where
+            decodedParam p = fromMaybe "" <$> getParam p            
+    in method GET getter <|> method POST setter
 
 libcspmTypeCheck :: String -> IO (Bool, [ErrorMessage], [ErrorMessage])
 libcspmTypeCheck input = do
@@ -48,21 +63,6 @@ highlight input =
     readProcess "ruby" 
         ["-rubygems", "dependencies/textmate2css/highlight.rb", 
         "-s", "dependencies/cspm-textmate/CSPM.tmLanguage"] input
-
---method GET getter <|> method POST setter
-
-typecheck :: Handler App App ()
-typecheck = do
-    sourcebs <- decodedParam "sourceCode"
-    let source = BC.toString sourcebs
-    r <- liftIO $ libcspmTypeCheck source
-    src <- liftIO $ highlight source
-    heistLocal (bindSplices [
-        ("result", resultSplice r),
-        ("sourcecode", sourceCodeSplice src),
-        ("plainsource", plainSourceCode source)]) $ render "type_check_result"
-  where
-    decodedParam p = fromMaybe "" <$> getParam p
 
 mkElem :: String -> [(String, String)] -> [X.Node] -> X.Node
 mkElem e attrs children =
@@ -111,7 +111,6 @@ sourceCodeSplice source = return $ mkHtml source
 routes :: [(BS.ByteString, Handler App App ())]
 routes = [
     ("/", index),
-    ("/typecheck", typecheck),
     ("/static/", serveDirectory "resources/static")]
 
 -- | The application initializer.

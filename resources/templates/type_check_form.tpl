@@ -3,7 +3,7 @@
 
     <p>Submit file for type-checking.</p>
 
-    <form action="/typecheck" method="POST" accept-charset="utf-8">
+    <form action="." method="POST" accept-charset="utf-8">
         <textarea name="sourceCode"><plainsource/></textarea><br/>
         <input type="submit"  value="Type Check">
     </form>
