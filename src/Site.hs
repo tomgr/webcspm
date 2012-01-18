@@ -5,6 +5,7 @@ module Site (
 ) where
 
 import Control.Applicative
+import Control.Concurrent (myThreadId, killThread)
 import Control.Monad.Trans
 import Control.Monad.State
 import qualified Data.ByteString as BS
@@ -119,14 +120,22 @@ routes :: [(BS.ByteString, Handler App App ())]
 routes = [
     ("/", index),
     ("/ajax/typecheck", ajaxTypeCheck),
-    ("/static/", serveDirectory "resources/static")]
+    ("/static/", serveDirectory "resources/static"),
+    ("/pull_from_git/some_long_secret_that_noone-knows/", killServer)]
+
+killServer :: Handler App App ()
+killServer = do
+    tid <- gets _threadId
+    liftIO $ killThread tid
+    writeText "Killed"
 
 -- | The application initializer.
 app :: SnapletInit App App
 app = makeSnaplet "app" "CSPM TypeChecker Application." Nothing $ do
     h <- nestSnaplet "heist" heist $ heistInit "resources/templates"
+    tid <- liftIO $ myThreadId
     addRoutes routes
-    return $ App h
+    return $ App h tid
 
 
 
