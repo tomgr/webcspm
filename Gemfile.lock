@@ -1,17 +1,14 @@
-GIT
-  remote: git://github.com/cehoffman/textpow
-  revision: c43e87fa41c9d57964408bf586071947a5ca7f4c
-  specs:
-    textpow (0.2)
-
 GEM
   remote: http://rubygems.org/
   specs:
     choice (0.1.4)
+    plist (3.1.0)
+    textpow19 (0.11.0)
+      plist (>= 3.0.1)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
   choice (>= 0.1.0)
-  textpow (= 0.2)!
+  textpow19
