@@ -12,7 +12,7 @@ Cabal-version: >=1.2
 Executable webcspm
     hs-source-dirs: src
     Main-is: Main.hs
-
+    
     Build-depends:
         libcspm >= 0.2.1 && < 0.3,
         process >= 1.1 && < 1.2,
@@ -32,9 +32,7 @@ Executable webcspm
         utf8-string >= 0.3 && < 0.4,
         xmlhtml == 0.1.*
 
-    if impl(ghc >= 6.12.0)
-        ghc-options: -threaded -Wall -fwarn-tabs -funbox-strict-fields -O2
-                   -fno-warn-orphans -fno-warn-unused-do-bind
-    else
-        ghc-options: -threaded -Wall -fwarn-tabs -funbox-strict-fields -O2
-                   -fno-warn-orphans
+    
+    ghc-options: -threaded -Wall -fwarn-tabs -funbox-strict-fields -O2
+                 -fno-warn-orphans -fno-warn-unused-do-bind -static
+                 -optl-static
