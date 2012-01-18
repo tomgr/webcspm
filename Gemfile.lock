@@ -11,4 +11,4 @@ PLATFORMS
 
 DEPENDENCIES
   choice (>= 0.1.0)
-  textpow19
+  textpow19 (>= 0.1)
