@@ -1,0 +1,16 @@
+GEM
+  remote: http://rubygems.org/
+  specs:
+    choice (0.1.4)
+    oniguruma (1.1.0)
+    plist (3.1.0)
+    textpow (0.10.1)
+      oniguruma (>= 1.1.0)
+      plist (>= 3.0.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  choice (>= 0.1.0)
+  textpow (>= 0.10.1)
