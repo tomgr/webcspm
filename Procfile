@@ -1,2 +1,2 @@
-web: ./webcspm-current -p 80
+web: ./webcspm-current -p $PORT
 
