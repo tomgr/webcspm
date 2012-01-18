@@ -69,7 +69,7 @@ libcspmTypeCheck input = do
 highlight :: String -> IO String
 highlight input =
     readProcess "ruby" 
-        ["-rubygems", "dependencies/textmate2css/highlight.rb", 
+        ["dependencies/textmate2css/highlight.rb", 
         "-s", "dependencies/cspm-textmate/CSPM.tmLanguage"] input
 
 mkElem :: String -> [(String, String)] -> [X.Node] -> X.Node
