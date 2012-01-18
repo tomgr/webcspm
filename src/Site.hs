@@ -11,7 +11,6 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.UTF8 as BC
 import Data.Maybe
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
 import Snap.Core
 import Snap.Snaplet
 import Snap.Snaplet.Heist
@@ -23,7 +22,6 @@ import Application
 import CSPM hiding (App)
 import Util.Annotated
 import Util.Exception
-import Util.PrettyPrint hiding (render)
 
 index :: Handler App App ()
 index = heistLocal (bindSplices []) $ render "index"
@@ -41,6 +39,8 @@ libcspmTypeCheck input = do
         case merr of
             Left (SourceError es) -> return (False, ws, es)
             Right v -> return (True, ws, [])
+            Right _ -> return (True, ws, [])
+            _ -> error "Internal error"
 
 --method GET getter <|> method POST setter
 
@@ -57,6 +57,11 @@ typecheck = do
     decodedParam p = fromMaybe "" <$> getParam p
 
 mkElem e attrs children = X.Element (T.pack e) [(k, T.pack v) | (k,v) <- attrs] children
+mkElem :: String -> [(String, String)] -> [X.Node] -> X.Node
+mkElem e attrs children =
+    X.Element (T.pack e) [(T.pack k, T.pack v) | (k,v) <- attrs] children
+
+mkText :: String -> X.Node
 mkText str = X.TextNode (T.pack str)
 
 resultSplice :: Monad m => (Bool, [ErrorMessage], [ErrorMessage]) -> Splice m
@@ -65,13 +70,13 @@ resultSplice (suceeded, warnings, errors) =
         resultParagraph = mkText $
             if suceeded then "Typechecking Suceeded" else "Typechecking Failed"
 
-        mkLocationLink loc = 
+        mkLocationLink l = 
             let
                 lineNo = 
-                    case loc of 
+                    case l of 
                         Unknown -> ""
-                        _ -> show (srcLocLine (srcSpanStart loc))
-            in mkElem "a" [("href", "#line"++lineNo)] [mkText (show loc)]
+                        _ -> show (srcLocLine (srcSpanStart l))
+            in mkElem "a" [("href", "#line"++lineNo)] [mkText (show l)]
 
         formatMessage msg =
             [mkLocationLink (location msg), mkElem "pre" [] [mkText (show (message msg))]]
@@ -120,11 +125,6 @@ initCSPMState = do
     sess <- newCSPMSession
     return $ CSPMWarningState sess []
 
-resetCSPM :: CSPMWarningMonad ()
-resetCSPM = do
-    sess <- liftIO $ newCSPMSession
-    modify (\st -> st { cspmSession = sess, lastWarnings = [] })
-
 type CSPMWarningMonad = StateT CSPMWarningState IO
 
 runCSPMWarningM :: CSPMWarningState -> CSPMWarningMonad a -> IO a
@@ -132,9 +132,6 @@ runCSPMWarningM st a = runStateT a st >>= return . fst
 
 getState :: (CSPMWarningState -> a) -> CSPMWarningMonad a
 getState = gets
-
-modifyState :: (CSPMWarningState -> CSPMWarningState) -> CSPMWarningMonad ()
-modifyState = modify
 
 instance CSPMMonad CSPMWarningMonad where
     getSession = gets cspmSession
