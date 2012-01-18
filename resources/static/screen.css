@@ -35,26 +35,6 @@ ul.error_list li a:hover
     text-decoration: none;
 }
 
-#sourceCode pre
-{
-    display: inline;
-    padding-left: 10px;
-}
-
-#sourceCode ol
-{
-    list-style-type: none;
-    padding-left: 0px;
-    -webkit-padding-start: 0px;
-}
-
-#sourceCode ol li a
-{
-    color: black;
-    text-decoration: none;
-    font-family: monospace;
-}
-
 textarea
 {
     width: 800px;

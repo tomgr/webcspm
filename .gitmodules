@@ -1,0 +1,6 @@
+[submodule "dependencies/textmate2css"]
+	path = dependencies/textmate2css
+	url = git://github.com/tomgr/textmate2css
+[submodule "dependencies/cspm-textmate"]
+	path = dependencies/cspm-textmate
+	url = git://github.com/tomgr/cspm-textmate

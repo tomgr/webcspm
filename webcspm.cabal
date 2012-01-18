@@ -15,6 +15,7 @@ Executable webcspm
 
     Build-depends:
         libcspm >= 0.2 && < 0.3,
+        process >= 1.1 && < 1.2,
         -- Snap Dependenicies
         base >= 4 && < 5,
         bytestring >= 0.9.1 && < 0.10,

@@ -15,6 +15,8 @@ import Snap.Core
 import Snap.Snaplet
 import Snap.Snaplet.Heist
 import Snap.Util.FileServe
+import System.IO
+import System.Process
 import Text.Templating.Heist
 import qualified  Text.XmlHtml as X
 
@@ -24,7 +26,7 @@ import Util.Annotated
 import Util.Exception
 
 index :: Handler App App ()
-index = heistLocal (bindSplices []) $ render "index"
+index = heistLocal (bindSplices [("plainsource", plainSourceCode "")]) $ render "index"
 
 libcspmTypeCheck :: String -> IO (Bool, [ErrorMessage], [ErrorMessage])
 libcspmTypeCheck input = do
@@ -38,9 +40,14 @@ libcspmTypeCheck input = do
         ws <- getState lastWarnings
         case merr of
             Left (SourceError es) -> return (False, ws, es)
-            Right v -> return (True, ws, [])
             Right _ -> return (True, ws, [])
             _ -> error "Internal error"
+
+highlight :: String -> IO String
+highlight input =
+    readProcess "ruby" 
+        ["-rubygems", "dependencies/textmate2css/highlight.rb", 
+        "-s", "dependencies/cspm-textmate/CSPM.tmLanguage"] input
 
 --method GET getter <|> method POST setter
 
@@ -49,20 +56,27 @@ typecheck = do
     sourcebs <- decodedParam "sourceCode"
     let source = BC.toString sourcebs
     r <- liftIO $ libcspmTypeCheck source
+    src <- liftIO $ highlight source
     heistLocal (bindSplices [
         ("result", resultSplice r),
-        ("sourcecode", sourceCodeSplice source),
+        ("sourcecode", sourceCodeSplice src),
         ("plainsource", plainSourceCode source)]) $ render "type_check_result"
   where
     decodedParam p = fromMaybe "" <$> getParam p
 
-mkElem e attrs children = X.Element (T.pack e) [(k, T.pack v) | (k,v) <- attrs] children
 mkElem :: String -> [(String, String)] -> [X.Node] -> X.Node
 mkElem e attrs children =
     X.Element (T.pack e) [(T.pack k, T.pack v) | (k,v) <- attrs] children
 
 mkText :: String -> X.Node
 mkText str = X.TextNode (T.pack str)
+
+mkHtml :: String -> [X.Node]
+mkHtml str = 
+    case X.parseXML "" (BC.fromString str) of
+        Left s -> error (s++"\n"++str)
+        Right (X.XmlDocument _ _ ns) -> ns
+        Right _ -> error "Unknown HTML Type"
 
 resultSplice :: Monad m => (Bool, [ErrorMessage], [ErrorMessage]) -> Splice m
 resultSplice (suceeded, warnings, errors) =
@@ -91,13 +105,7 @@ plainSourceCode :: Monad m => String -> Splice m
 plainSourceCode s= return [mkText s]
 
 sourceCodeSplice :: Monad m => String -> Splice m
-sourceCodeSplice source = return $ pack $ mkElem "ol" [] $
-    map (\ (ln, l) -> 
-        mkElem "li" [] [mkElem "a" [("id", "line"++show ln)] [mkText (show ln++":")], 
-        mkElem "pre" [] [mkText l]]
-    ) (zip [1..] (lines source))
-
-    where pack x = [x]
+sourceCodeSplice source = return $ mkHtml source
 
 -- | The application's routes.
 routes :: [(BS.ByteString, Handler App App ())]
