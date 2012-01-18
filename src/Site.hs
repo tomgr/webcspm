@@ -25,23 +25,30 @@ import CSPM hiding (App)
 import Util.Annotated
 import Util.Exception
 
+decodedParam :: MonadSnap f => BC.ByteString -> f BC.ByteString
+decodedParam p = fromMaybe "" <$> getParam p
+
 index :: Handler App App ()
 index =
     let
         getter = heistLocal (bindSplices [("plainsource", plainSourceCode "")]) 
             $ render "index"
-        setter = do
-            sourcebs <- decodedParam "sourceCode"
-            let source = BC.toString sourcebs
-            r <- liftIO $ libcspmTypeCheck source
-            src <- liftIO $ highlight source
-            heistLocal (bindSplices [
-                ("result", resultSplice r),
-                ("sourcecode", sourceCodeSplice src),
-                ("plainsource", plainSourceCode source)]) $ render "type_check_result"
-          where
-            decodedParam p = fromMaybe "" <$> getParam p            
+        setter = typeCheck (render "type_check_result")
     in method GET getter <|> method POST setter
+
+typeCheck :: Handler App App () -> Handler App App ()
+typeCheck f = do
+    sourcebs <- decodedParam "sourceCode"
+    let source = BC.toString sourcebs
+    r <- liftIO $ libcspmTypeCheck source
+    src <- liftIO $ highlight source
+    heistLocal (bindSplices [
+        ("result", resultSplice r),
+        ("sourcecode", sourceCodeSplice src),
+        ("plainsource", plainSourceCode source)]) $ f
+
+ajaxTypeCheck :: Handler App App ()
+ajaxTypeCheck = typeCheck (render "type_check_output")
 
 libcspmTypeCheck :: String -> IO (Bool, [ErrorMessage], [ErrorMessage])
 libcspmTypeCheck input = do
@@ -111,6 +118,7 @@ sourceCodeSplice source = return $ mkHtml source
 routes :: [(BS.ByteString, Handler App App ())]
 routes = [
     ("/", index),
+    ("/ajax/typecheck", ajaxTypeCheck),
     ("/static/", serveDirectory "resources/static")]
 
 -- | The application initializer.

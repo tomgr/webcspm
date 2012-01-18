@@ -7,18 +7,11 @@
     </head>
     <body>
         <div id="content">
-            <h1>Type Checking Results</h1>
+            <h1>Type Checking</h1>
 
             <apply template="header"/>
             
-            <div id="result">
-                <h2>Result</h2>
-                <result/>
-
-                <h2>Source Code</h2>
-
-                <pre class="textmate-highlight solarized_light_"><sourcecode/></pre>
-            </div>
+            <apply template="type_check_output"/>
 
             <apply template="type_check_form"/>
 

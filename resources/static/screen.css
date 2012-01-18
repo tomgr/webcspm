@@ -1,38 +1,55 @@
-html
-{
-    padding: 0;
-    margin: 0;
-    background-color: #ffffff;
-    font-family: Verdana, Helvetica, sans-serif;
-}
-
 body
 {
+    font-family: Verdana, Helvetica, sans-serif;
     padding: 0;
     margin: 0;
+    background-color: #EEE;
+    padding-bottom: 20px;
 }
 
 #content
 {
     padding-left: 1em;
     padding-bottom: 1em;
+    padding-right: 1em;
+    margin-left: auto;
+    margin-right: auto;
+    width: 1000px;
+    background-color: white;
+    box-shadow: 0 0 5px 5px #888;
 }
 
 ul.error_list
 {
+    font-size: 11pt;
     list-style-type: none;
     -webkit-padding-start: 0px;
 }
 
+ul.error_list li pre
+{
+    font-size: 11pt;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+    padding-left: 1em;
+    font-family: Menlo, monospace;
+}
+
 ul.error_list li a
 {
-    font-family: monospace;
-    color: blue;
+    color: #dc322f;;
+    font-weight: bold;
+    font-family: Menlo, monospace;
 }
 
 ul.error_list li a:hover
 {
     text-decoration: none;
+}
+
+ul.errors
+{
+    color: #dc322f;
 }
 
 textarea
