@@ -1,16 +1,17 @@
+GIT
+  remote: git://github.com/cehoffman/textpow
+  revision: c43e87fa41c9d57964408bf586071947a5ca7f4c
+  specs:
+    textpow (0.2)
+
 GEM
   remote: http://rubygems.org/
   specs:
     choice (0.1.4)
-    oniguruma (1.1.0)
-    plist (3.1.0)
-    textpow (0.10.1)
-      oniguruma (>= 1.1.0)
-      plist (>= 3.0.0)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
   choice (>= 0.1.0)
-  textpow (>= 0.10.1)
+  textpow (= 0.2)!
