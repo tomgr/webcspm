@@ -15,7 +15,15 @@ Executable webcspm
 
     Build-depends:
         libcspm >= 0.2.1 && < 0.3,
-        process >= 1.1 && < 1.2,
+        process >= 1.1,
+        regex-base >= 0.93 && < 0.94,
+        regex-pcre >= 0.94 && < 0.95,
+        containers >= 0.4 && < 0.5,
+        split >= 0.1 && < 0.2,
+        array >= 0.3 && < 0.4,
+        hxt >= 9.1 && < 9.2,
+        dataenc >= 0.14 && < 0.15,
+
         -- Snap Dependenicies
         base >= 4 && < 5,
         bytestring >= 0.9.1 && < 0.10,
@@ -32,9 +40,5 @@ Executable webcspm
         utf8-string >= 0.3 && < 0.4,
         xmlhtml == 0.1.*
 
-    if impl(ghc >= 6.12.0)
-        ghc-options: -threaded -Wall -fwarn-tabs -funbox-strict-fields -O2
-                   -fno-warn-orphans -fno-warn-unused-do-bind
-    else
-        ghc-options: -threaded -Wall -fwarn-tabs -funbox-strict-fields -O2
-                   -fno-warn-orphans
+    ghc-options: -threaded -Wall -fwarn-tabs -funbox-strict-fields -O2
+               -fno-warn-orphans

@@ -1,14 +1,15 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Application where
     
-import Control.Concurrent (ThreadId)
 import Data.Lens.Template
 import Snap.Snaplet
 import Snap.Snaplet.Heist
 
+import Text.SyntaxHighlight.TextMate (TMSyntaxFile)
+
 data App = App { 
         _heist :: Snaplet (Heist App),
-        _threadId :: ThreadId
+        _cspmSynytaxFile :: TMSyntaxFile
     }
 
 type AppHandler = Handler App App
