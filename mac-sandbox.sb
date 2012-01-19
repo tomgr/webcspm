@@ -15,13 +15,3 @@
 
 (allow network*)
 (allow system-socket)
-
-; To allow highlight.rb to run
-(allow process-fork)
-(allow process-exec (regex "ruby"))
-(allow file-read-data (literal "/Users/Tom/src/CSPM/cspm-textmate/highlight.rb"))
-(allow file-read-data (subpath "/Users/Tom/src/CSPM/webcspm"))
-(allow file-read-data (subpath "/Library/Ruby/Gems/1.8/specifications"))
-(allow file-read-data (subpath "/Users/Tom/.gem/ruby/1.8/specifications"))
-(allow file-read-data (subpath "/Library/Ruby/Gems/1.8/gems"))
-(allow file-read-data (subpath "/usr/local/Cellar/oniguruma"))
