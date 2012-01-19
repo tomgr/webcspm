@@ -112,7 +112,7 @@ sourceCodeSplice source = do
 
     let
         fileToHtml :: HLFile -> [X.Node]
-        fileToHtml (HLFile segs) = fst $ processSegments (HLNewLine:segs) 0
+        fileToHtml (HLFile segs) = fst $ processSegments (HLNewLine:segs) 1
 
         processSegments :: [HLSegment] -> Int -> ([X.Node], Int)
         processSegments [] lineNo = ([], lineNo)
