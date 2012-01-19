@@ -7,8 +7,6 @@
     </head>
     <body>
         <div id="content">
-            <h1>Type Checking</h1>
-
             <apply template="header"/>
             
             <apply template="type_check_output"/>
