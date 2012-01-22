@@ -1,19 +1,27 @@
-<html>
-    <head>
-        <title>CSPM Type Checker Results</title>
-        <link rel="stylesheet" type="text/css" href="/static/screen.css"/>
-        <link rel="stylesheet" type="text/css" href="/static/solarized_light.css"/>
-        <link rel="stylesheet" type="text/css" href="/static/solarized_dark.css"/>
-    </head>
-    <body>
-        <div id="content">
-            <apply template="header"/>
-            
-            <apply template="type_check_output"/>
+<section id="typecheck_result" class="page">
+<div class="page-header">
+    <h1>Type Checking Result</h1>
+</div>
 
-            <apply template="type_check_form"/>
+<div class="page-content">
 
-            <apply template="footer"/>
-        </div>
-    </body>
-</html>
+<typecheck>
+    <escapedscript><plainsource></plainsource></escapedscript>
+    <output id="typecheck_output">
+        <outcome>
+            <passes><p>Script passed typechecking.</p></passes>
+            <fails></fails>
+        </outcome>
+        
+        <errors/>
+
+        <p>If this output looks incorrect please email the file to <a href="mailto:thomas.gibson-robinson@cs.ox.ac.uk">thomas.gibson-robinson@cs.ox.ac.uk</a>.</p>
+
+        <h2>Highlighted Source Code <small>Hint: hover over top-level function definitions to see their types.</small></h2>
+        
+        <source/>
+    </output>
+</typecheck>
+
+</div>
+</section>
