@@ -9,7 +9,9 @@ import Control.Monad.Trans
 import Control.Monad.State
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.UTF8 as BC
+import qualified Data.Map as M
 import Data.Maybe
+import Data.List.Split
 import qualified Data.Text as T
 import Snap.Core
 import Snap.Snaplet
@@ -17,15 +19,15 @@ import Snap.Snaplet.Heist
 import Snap.Util.FileServe
 import System.IO
 import Text.Templating.Heist
+import Text.Printf
 import qualified  Text.XmlHtml as X
 
 import Application
 import CSPM hiding (App)
-import Data.List.Split
 import Text.SyntaxHighlight.TextMate
-import Text.Printf
 import Util.Annotated
 import Util.Exception
+import Util.PrettyPrint hiding (render)
 
 decodedParam :: MonadSnap f => BC.ByteString -> f BC.ByteString
 decodedParam p = fromMaybe "" <$> getParam p
@@ -33,38 +35,17 @@ decodedParam p = fromMaybe "" <$> getParam p
 index :: Handler App App ()
 index =
     let
-        getter = heistLocal (bindSplices [("plainsource", plainSourceCode "")]) 
-            $ render "index"
-        setter = typeCheck (render "type_check_result")
+        typeCheck src f =
+            heistLocal (bindSplices [("plainsource", textSplice $ T.pack $ src)]) $ f
+
+        getter = typeCheck "" $ render "site"
+        setter = do
+            sourcebs <- decodedParam "sourceCode"
+            typeCheck (BC.toString sourcebs) $ render "site_with_results"
     in method GET getter <|> method POST setter
 
-typeCheck :: Handler App App () -> Handler App App ()
-typeCheck f = do
-    sourcebs <- decodedParam "sourceCode"
-    let source = BC.toString sourcebs
-    r <- liftIO $ libcspmTypeCheck source
-    heistLocal (bindSplices [
-        ("result", resultSplice r),
-        ("sourcecode", sourceCodeSplice source),
-        ("plainsource", plainSourceCode source)]) $ f
-
-ajaxTypeCheck :: Handler App App ()
-ajaxTypeCheck = typeCheck (render "type_check_output")
-
-libcspmTypeCheck :: String -> IO (Bool, [ErrorMessage], [ErrorMessage])
-libcspmTypeCheck input = do
-    session <- initCSPMState
-    runCSPMWarningM session $ do
-        merr <- tryM $ do
-            parsedFile <- parseStringAsFile input
-            renamedFile <- renameFile parsedFile
-            _ <- typeCheckFile renamedFile
-            return ()
-        ws <- getState lastWarnings
-        case merr of
-            Left (SourceError es) -> return (False, ws, es)
-            Right _ -> return (True, ws, [])
-            _ -> error "Internal error"
+help :: Handler App App ()
+help = render "help"
 
 mkElem :: String -> [(String, String)] -> [X.Node] -> X.Node
 mkElem e attrs children =
@@ -73,43 +54,85 @@ mkElem e attrs children =
 mkText :: String -> X.Node
 mkText str = X.TextNode (T.pack str)
 
---mkHtml :: String -> [X.Node]
---mkHtml str = 
---    case X.parseXML "" (BC.fromString str) of
---        Left s -> error (s++"\n"++str)
---        Right (X.XmlDocument _ _ ns) -> ns
---        Right _ -> error "Unknown HTML Type"
+typecheckCSPMSplice :: SnapletSplice b App
+typecheckCSPMSplice = do
+    node <- liftHeist $ getParamNode
 
-resultSplice :: Monad m => (Bool, [ErrorMessage], [ErrorMessage]) -> Splice m
-resultSplice (suceeded, warnings, errors) =
+    let sourceNode = case X.childElementTag "script" node of
+                    Just n -> n
+                    Nothing -> case X.childElementTag "escapedscript" node of
+                                Just n -> n
+                                Nothing -> error "Could not find source"
+
+    -- Recursively process the source code.
+    [processedSourceNode] <- liftHeist $ runNodeList [sourceNode]
+    let sourceCode = T.unpack $ X.nodeText processedSourceNode
+
+    (suceeded, warnings, errors, types) <- liftIO (libcspmTypeCheck sourceCode)
+
+    syntaxFile <- gets _cspmSynytaxFile
     let
-        resultParagraph = mkText $
-            if suceeded then "Typechecking Suceeded" else "Typechecking Failed"
+        Just outputFormat = X.childElementTag "output" node
+        linePrefix = X.getAttribute "id" outputFormat
+        outputNodes = X.elementChildren outputFormat
 
-        mkLocationLink l = 
-            let
-                lineNo = 
-                    case l of 
-                        Unknown -> ""
-                        _ -> show (srcLocLine (srcSpanStart l))
-            in mkElem "a" [("href", "#line"++lineNo)] [mkText (show l)]
+        mkDefn cls label err = liftHeist $
+            callTemplateWithText "type_error" [
+                ("labelclass", cls),
+                ("label", label),
+                ("location", T.pack $ show $ location err),
+                ("linenumber", T.pack $ mkLineTitle linePrefix lineNo),
+                ("message", T.pack $ show $ message $ err)
+            ]
+            where lineNo = case location err of
+                                Unknown -> ""
+                                l -> show $ srcLocLine $ srcSpanStart l
+        
+        typeMap = M.fromList [(show n, show $ prettyPrint t) | (n,t) <- types]
 
-        formatMessage msg =
-            [mkLocationLink (location msg), mkElem "pre" [] [mkText (show (message msg))]]
+        makeOutput :: X.Node -> SnapletSplice b App
+        makeOutput n | X.tagName n == Just "source" = return $
+            sourceCodeNode syntaxFile linePrefix typeMap sourceCode
+        makeOutput n | X.tagName n == Just "outcome" = return $ pack $ fromJust $
+            if suceeded then X.childElementTag "passes" n
+            else X.childElementTag "fails" n
+        makeOutput n | X.tagName n == Just "errors" = do
+            es <- mapM (mkDefn "important" "Error") errors
+            ws <- mapM (mkDefn "warning" "Warning") warnings
+            return $ pack $ mkElem "dl" [("class", "error_list")] (concat es++concat ws)
+        makeOutput n = return [n]
+        
+        pack x = [x]
+    
+    nss <- mapM makeOutput outputNodes
+    return $ concat nss
 
-        mkPara xs s = 
-            mkElem "ul" [("class", s)] (map (\ err -> mkElem "li" [] (formatMessage err)) xs)
-        errorsParagraph = mkPara errors "error_list errors"
-        warningsParagraph = mkPara warnings "error_list warnings"
-    in return $ [resultParagraph, errorsParagraph, warningsParagraph]
+blockCSPMSplice :: SnapletSplice b App
+blockCSPMSplice = do
+    node <- liftHeist $ getParamNode
+    syntaxFile <- gets _cspmSynytaxFile
+    return $ sourceCodeNode syntaxFile (X.getAttribute "id" node) (M.fromList []) $
+        case X.childElementTag "script" node of
+            Just n -> T.unpack $ X.nodeText $ n
+            Nothing -> T.unpack $ X.nodeText $ node
 
-plainSourceCode :: String -> Splice AppHandler
-plainSourceCode s = return [mkText s]
+typeSplice :: SnapletSplice b App
+typeSplice = do
+    node <- liftHeist $ getParamNode
+    return [mkElem "span" [("class", "type")] [X.TextNode $ X.nodeText node]]
 
-sourceCodeSplice :: String -> Splice AppHandler
-sourceCodeSplice source = do
-    syntaxFile <- lift $ gets _cspmSynytaxFile
+cspmSplice :: SnapletSplice b App
+cspmSplice = do
+    node <- liftHeist $ getParamNode
+    return [mkElem "span" [("class", "cspm")] [X.TextNode $ X.nodeText node]]
 
+mkLineTitle :: Maybe T.Text -> String -> String
+mkLineTitle (Just linePrefix) lineNo = (T.unpack linePrefix)++"_line"++lineNo
+mkLineTitle Nothing lineNo = "line"++lineNo
+
+-- | A splice that highlights the given string as CSPM source coe.
+sourceCodeNode :: TMSyntaxFile -> Maybe T.Text -> M.Map String String -> String -> [X.Node]
+sourceCodeNode syntaxFile linePrefix typeMap source =
     let
         fileToHtml :: HLFile -> [X.Node]
         fileToHtml (HLFile segs) = fst $ processSegments (HLNewLine:segs) 1
@@ -125,12 +148,21 @@ sourceCodeSplice source = do
         segmentToHtml :: HLSegment -> Int -> (X.Node, Int)
         segmentToHtml (HLString s) lineNo = (mkText s, lineNo)
         segmentToHtml HLNewLine lineNo = 
-            (mkElem "span" [("class", "line_number"), ("id", "line"++show lineNo)] 
+            (mkElem "span" [("class", "line_number"), ("id", mkLineTitle linePrefix (show lineNo))] 
                 [mkText lineNoTxt], lineNo+1)
             where lineNoTxt = printf "%4d" lineNo
         segmentToHtml (HLTag tag segs) lineNo =
-            (mkElem "span" [("class", tagClass)] ns, l')
+            (mkElem "span" (("class", tagClass):extraAttrs) ns, l')
             where
+                extraAttrs = 
+                    if tag == "entity.name.function.cspm" then
+                        case head segs of
+                            HLString s -> case M.lookup s typeMap of
+                                Just t -> [("data-type", t)]
+                                Nothing -> []
+                            _ -> []
+                    else []
+                
                 (ns, l') = processSegments segs lineNo
 
                 tagClass :: String
@@ -145,24 +177,56 @@ sourceCodeSplice source = do
                 allPrefixes [] = []
                 allPrefixes [x] = [[x]]
                 allPrefixes (x:xs) = [x] : map ((:) x) (allPrefixes xs)
-    
-    return $ fileToHtml $ highlightFile syntaxFile source
+
+    in [mkElem "pre" [("class", "textmate-highlight solarized_light_")] 
+                (fileToHtml $ highlightFile syntaxFile source)]
 
 -- | The application's routes.
 routes :: [(BS.ByteString, Handler App App ())]
 routes = [
     ("/", index),
-    ("/ajax/typecheck", ajaxTypeCheck),
+    ("/help", help),
     ("/static/", serveDirectory "resources/static")]
 
 -- | The application initializer.
 app :: SnapletInit App App
 app = makeSnaplet "app" "CSPM TypeChecker Application." Nothing $ do
     h <- nestSnaplet "heist" heist $ heistInit "resources/templates"
-    syntaxF <-
+    cspmSyntaxFile <-
         liftIO $ parseSyntaxFile "dependencies/cspm-textmate/CSPM.tmLanguage"
     addRoutes routes
-    return $ App h syntaxF
+    addSplices [
+        ("type", typeSplice),
+        ("cspm", cspmSplice),
+        ("blockcspm", blockCSPMSplice),
+        ("typecheck", typecheckCSPMSplice)]
+    return $ App h cspmSyntaxFile
+
+-- ****************************************************************************
+-- LibCSPM Functions
+
+libcspmTypeCheck :: String -> IO (Bool, [ErrorMessage], [ErrorMessage], [(Name, Type)])
+libcspmTypeCheck input = do
+    session <- initCSPMState
+    runCSPMWarningM session $ do
+        merr <- tryM $ do
+            parsedFile <- parseStringAsFile input
+            renamedFile <- renameFile parsedFile
+            tcFile <- typeCheckFile renamedFile
+            dsFile <- desugarFile tcFile
+            bindFile dsFile
+            ns <- getBoundNames
+            mapM (\n -> do
+                    pexp <- parseExpression (show n)
+                    rnexp <- renameExpression pexp
+                    t <- typeOfExpression rnexp
+                    return (n, t)
+                ) ns
+        ws <- getState lastWarnings
+        case merr of
+            Left (SourceError es) -> return (False, ws, es, [])
+            Right m -> return (True, ws, [], m)
+            _ -> error "Internal error"
 
 data CSPMWarningState = CSPMWarningState {
         cspmSession :: CSPMSession,
